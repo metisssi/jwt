@@ -1,2 +1,6 @@
-node_modules/
+/client/node_modules
+/server/node_modules
+
+# Логи, временные файлы, среды
+*.log
 .env

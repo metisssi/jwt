@@ -17,8 +17,8 @@ app.use(cors({
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
-app.use(cors())
-app.use('/api', router); 
+
+app.use('/', router); 
 app.use(errorMiddleware); 
 
 const start = async () => {
