@@ -18,7 +18,7 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-app.use('/', router); 
+app.use('/api', router); 
 app.use(errorMiddleware); 
 
 const start = async () => {

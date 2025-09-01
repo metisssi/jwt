@@ -8,29 +8,55 @@ const ApiError = require('../exceptions/api-error')
 
 class UserService {
     async registration(email, password) {
-        const candidate = await UserModel.findOne({ email })
-        if (candidate) {
-            throw ApiError.BadRequest(`User with that email ${email} already exists `)
+        try {
+            console.log('🔄 Starting registration for:', email)
+            
+            const candidate = await UserModel.findOne({ email })
+            if (candidate) {
+                console.log('❌ User already exists:', email)
+                throw ApiError.BadRequest(`User with that email ${email} already exists`)
+            }
+
+            console.log('🔐 Hashing password...')
+            const hashPassword = await bcrypt.hash(password, 3)
+            
+            console.log('🔗 Generating activation link...')
+            const activationLink = uuid.v4()
+
+            console.log('💾 Creating user in database...')
+            const user = await UserModel.create({ 
+                email, 
+                password: hashPassword, 
+                activationLink 
+            })
+            console.log('✅ User created:', user._id)
+
+            console.log('📧 Sending activation email...')
+            try {
+                await mailService.sendActivationMail(email, `${process.env.API_URL}/api/activate/${activationLink}`)
+                console.log('✅ Email sent successfully')
+            } catch (emailError) {
+                console.log('⚠️ Email sending failed:', emailError.message)
+                // Не блокируем регистрацию из-за проблем с email
+            }
+
+            console.log('🎫 Generating tokens...')
+            const userDto = new UserDto(user)
+            const tokens = tokenService.generateTokens({ ...userDto })
+            
+            console.log('💾 Saving refresh token...')
+            await tokenService.saveToken(userDto.id, tokens.refreshToken)
+
+            console.log('✅ Registration successful for:', email)
+            return {
+                ...tokens, 
+                user: userDto
+            }
+
+        } catch (error) {
+            console.error('💥 Registration error:', error)
+            throw error
         }
-
-        const hashPassword = await bcrypt.hash(password, 3)
-        const activationLink = uuid.v4() // hash Passwrod
-
-
-        const user = await UserModel.create({ email, password: hashPassword, activationLink })
-        await mailService.sendActivationMail(email, `${process.env.API_URL}/api/activate/${activationLink}`);
-
-
-        const userDto = new UserDto(user) // id, email, isActivated
-        const tokens = tokenService.generateTokens({ ...userDto })
-        await tokenService.saveToken(userDto.id, tokens.refreshToken)
-
-        return {
-            ...tokens, user: userDto
-        }
-
-
-
     }
 
     async activate(activationLink) {
